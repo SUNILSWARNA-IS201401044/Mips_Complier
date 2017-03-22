@@ -1,0 +1,785 @@
+import sys
+import copy
+f=open('out.asm','w+')
+f1=open(sys.argv[1],'r+')
+l=[]
+str1=''
+str2=''
+str3=''
+for i in f1:
+	str1=i.split()
+	l.append(str1)
+g=[]
+for i in l:
+	if len(i)<=3:
+		str4=i[0]
+                if str4!="syscall":
+			if str4[0]!='#' and str4[0]!='.':
+				print str4[0]
+				str2=i[0]+' '
+				k=len(i)
+                		for j in range(1,k):
+                		        y=len(i[j])
+                		        str3=i[j]
+                		        if len(i[j])>=3 and str3[y-1]!=',':
+                		                str2=str2+i[j]
+                		                if(j<k-1 and i[j+1]==','):
+                		                        str2=str2+i[j+1]
+                		        if len(i[j])>=3 and str3[y-1]==',':
+                				str2=str2+i[j]
+				f.write(str2)
+                                f.write("\n")
+                                g.append(str2)
+
+
+	if len(i)>3:
+		
+		str4=i[0]
+		if str4!="syscall":
+			if str4[0]!='#' and str4[0]!='.':
+				print str4[0]
+				str2=i[0]+' '
+				k=len(i)
+				for j in range(1,k):
+					y=len(i[j])
+					str3=i[j]
+					if len(i[j])>=3 and str3[y-1]!=',':
+						str2=str2+i[j]
+						if(j<k-1 and i[j+1]==','):
+							str2=str2+i[j+1]
+					if len(i[j])>=3 and str3[y-1]==',':
+						str2=str2+i[j]
+				f.write(str2)
+				f.write("\n")
+				g.append(str2)
+
+f.close()
+f1.close()	
+f=open('out.asm','r+')	
+k=0
+list1=[]
+dict1={}
+dict1.setdefault("RAW",[])
+dict1.setdefault("WAW",[])
+dict1.setdefault("WAR",[])
+for i in f:
+	list1.append(i.split('\n'))
+	k+=1
+p=''
+s=[]
+lis1=[]
+for i in range(0,k):
+	for j in list1[i]:
+		s.append(j.split('\n'))	
+for h in range(0,len(s)-1):
+	try:
+		lis1.append(s[2*h])	
+	except:
+		pass	
+l=[]
+lis2=[]
+g=[]
+for i in range(0,len(lis1)):
+	if ['syscall'] in lis1:
+		lis1.remove(['syscall'])
+	elif ['.text'] in lis1:
+		lis1.remove(['.text'])
+	elif ['main:'] in lis1:
+		lis1.remove(['main:'])
+	elif ['.data'] in lis1:
+		lis1.remove(['.data'])
+	elif ['.globl main'] in lis1:
+		lis1.remove(['.globl main'])	
+f=[]
+d=[]
+c=''
+lis3=[]
+for l in lis1:
+	for g in l:
+		f=g.split(' ' or ',')
+		c=','.join(f)
+		lis3.append(c.split(','))
+print lis3
+flag=[[] for i in range(len(lis3))]
+flag1=[[] for i in range(len(lis3))]
+
+def chardel(k):
+	s=''
+	if k.endswith(')'):
+		s=s+k[len(k)-4]+k[len(k)-3]+k[len(k)-2]
+	else:
+		s=k
+	return s
+
+def adddep(add1,add2,add3,k):
+	j=0
+	for i in lis3[k:]:
+		r=lis3.index(i)
+		sum1=0
+		if i[0]=='add' or i[0]=='mul' or i[0]=='sub' or i[0]=='addi' or i[0]=='div':
+			
+			if add1==chardel(i[1]) :
+				print lis3[k-1],"had a WAW dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["WAW"] :
+					dict1["WAW"].append(lis3[k-1])
+				if i not in dict1["WAW"]:					
+					dict1["WAW"].append(i)
+			if add2==chardel(i[1]) :
+				print lis3[k-1],"had a WAR dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["WAR"]:
+					dict1["WAR"].append(lis3[k-1])
+				if i not in dict1["WAR"]:					
+					dict1["WAR"].append(i)
+			if add3==chardel(i[1]) :
+				print lis3[k-1],"had a WAR dependency with",i
+				flag1[r].append(lis3[k-1])
+				flag[r].append(k-1)
+				if lis3[k-1] not in dict1["WAR"]:
+					dict1["WAR"].append(lis3[k-1])
+				if i not in dict1["WAR"]:					
+					dict1["WAR"].append(i)
+			if add1==chardel(i[2]) :
+				print lis3[k-1],"had a RAW dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["RAW"]:
+					dict1["RAW"].append(lis3[k-1])
+				if i not in dict1["RAW"]:					
+					dict1["RAW"].append(i)
+			if  add1==chardel(i[3]):	
+				print lis3[k-1],"had a RAW dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["RAW"]:
+					dict1["RAW"].append(lis3[k-1])
+				if i not in dict1["RAW"]:					
+					dict1["RAW"].append(i)
+		if i[0]=='lw' or i[0]=='li' or i[0]=='lb':
+			if add1==chardel(i[1]):
+				print lis3[k-1],"has WAW dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["WAW"]:
+					dict1["WAW"].append(lis3[k-1])
+				if i not in dict1["WAW"]:					
+					dict1["WAW"].append(i)
+			if add1==chardel(i[2]):
+				print lis3[k-1],"has RAW dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["RAW"]:
+					dict1["RAW"].append(lis3[k-1])
+				if i not in dict1["RAW"]:					
+					dict1["RAW"].append(i)
+			if add2==chardel(i[1]):
+				print lis3[k-1],"has WAR dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["WAR"]:
+					dict1["WAR"].append(lis3[k-1])
+				if i not in dict1["WAR"]:					
+					dict1["WAR"].append(i)
+			if add3==chardel(i[1]):
+				print lis3[k-1],"has WAR dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["WAR"]:
+					dict1["WAR"].append(lis3[k-1])
+				if i not in dict1["WAR"]:					
+					dict1["WAR"].append(i)
+		if  i[0]=='sw' or i[0]=='sb':
+			if add1==chardel(i[2]):
+				print lis3[k-1],"has WAW dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["WAW"]:
+					dict1["WAW"].append(lis3[k-1])
+				if i not in dict1["WAW"]:					
+					dict1["WAW"].append(i)
+			if add2==char(i[2]):
+				print lis3[k-1],"has RAW dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["RAW"]:
+					dict1["RAW"].append(lis3[k-1])
+				if i not in dict1["RAW"]:					
+					dict1["RAW"].append(i)
+			if add3==chardel(i[2]):
+				print lis3[k-1],"has RAW dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["RAW"]:
+					dict1["RAW"].append(lis3[k-1])
+				if i not in dict1["RAW"]:					
+					dict1["RAW"].append(i)
+			if add1==chardel(i[1]):
+				print lis3[k-1],"has WAR dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["WAR"]:
+					dict1["WAR"].append(lis3[k-1])
+				if i not in dict1["WAR"]:
+					dict1["WAR"].append(i)
+		
+def lwdeep(lw1,lw2,k):
+	for i in lis3[k:]:
+		r=lis3.index(i)
+		if i[0]=='add' or i[0]=='mul' or i[0]=='sub' or i[0]=='addi' or i[0]=='div':
+			if lw1==chardel(i[1]):
+				print lis3[k-1],"has WAW dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["WAW"]:
+					dict1["WAW"].append(lis3[k-1])
+				if i not in dict1["WAW"]:					
+					dict1["WAW"].append(i)
+			if lw1==chardel(i[2]):
+				print lis3[k-1],"has RAW dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["RAW"]:
+					dict1["RAW"].append(lis3[k-1])
+				if i not in dict1["RAW"]:					
+					dict1["RAW"].append(i)
+			if lw1==chardel(i[3]):
+				print lis3[k-1],"has RAW dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["RAW"]:
+					dict1["RAW"].append(lis3[k-1])
+				if i not in dict1["RAW"]:					
+					dict1["RAW"].append(i)
+			if lw2==chardel(i[1]):
+				print lis3[k-1],"has WAR dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["WAR"]:
+					dict1["WAR"].append(lis3[k-1])
+				if i not in dict1["WAR"]:					
+					dict1["WAR"].append(i)
+		if i[0]=='lw' or i[0]=='li' or i[0]=='lb':
+			if lw1==chardel(i[1]):
+				print lis3[k-1],"has WAW dependency with",i
+				flag1[r].append(lis3[k-1])
+				flag[r].append(k-1)
+				if lis3[k-1] not in dict1["WAW"]:
+					dict1["WAW"].append(lis3[k-1])
+				if i not in dict1["WAW"]:					
+					dict1["WAW"].append(i)
+			if lw1==chardel(i[2]):
+				print lis3[k-1],"has RAW dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["RAW"]:
+					dict1["RAW"].append(lis3[k-1])
+				if i not in dict1["RAW"]:					
+					dict1["RAW"].append(i)
+			if lw2==chardel(i[1]):
+				print lis3[k-1],"has WAR dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["WAR"]:
+					dict1["WAR"].append(lis3[k-1])
+				if i not in dict1["WAR"]:					
+					dict1["WAR"].append(i)
+		if  i[0]=='sw' or i[0]=='sb':
+			if lw1==chardel(i[2]):
+				print lis3[k-1],"has WAW dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["WAW"]:
+					dict1["WAW"].append(lis3[k-1])
+				if i not in dict1["WAW"]:					
+					dict1["WAW"].append(i)
+			if lw1==chardel(i[1]):
+				print lis3[k-1],"has RAW dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["RAW"]:
+					dict1["RAW"].append(lis3[k-1])
+				if i not in dict1["RAW"]:					
+					dict1["RAW"].append(i)
+			if lw2==chardel(i[2]):
+				print lis3[k-1],"has WAR dependency with",i
+				flag[r].append(k-1)
+				flag1[r].append(lis3[k-1])
+				if lis3[k-1] not in dict1["WAR"]:
+					dict1["WAR"].append(lis3[k-1])
+				if i not in dict1["WAR"]:
+					dict1["WAR"].append(i)			
+for i in range(len(lis3)):
+	for j in range(len(lis3[i])):
+		try:
+			if lis3[i][j]=='lw' or lis3[i][j]=='move' or lis3[i][j]=='lb':
+				lw1=lis3[i][j+1]
+				lw2=lis3[i][j+2]
+				k1=chardel(lw1)
+				k2=chardel(lw2)
+				fun2=lwdeep(k1,k2,i+1)
+			if lis3[i][j]=='li':
+				if lis3[i][j+1]=='$v0':
+					continue
+				else:
+					lw1=chardel(lis3[i][j+1])
+					lw2='#'
+					fun2=lwdeep(lw1,lw2,i+1)
+			elif lis3[i][j]=='sw' or lis3[i][j]=='sb':
+				lw1=lis3[i][j+1]
+				lw2=lis3[i][j+2]
+				k1=chardel(lw1)
+				k2=chardel(lw2)
+				fun2=lwdeep(k2,k1,i+1)	
+			elif lis3[i][j]=='add' or lis3[i][j]=='mul' or lis3[i][j]=='div' or lis3[i][j]=='sub' or lis3[i][j]=='addi':
+				add1=lis3[i][j+1]
+				add2=lis3[i][j+2]
+				add3=lis3[i][j+3]
+				k1=chardel(add1)
+				k2=chardel(add2)
+				k3=chardel(add3)
+				fun1=adddep(k1,k2,k3,i+1)
+		except:
+			pass
+#print dict1
+#print lis3
+print flag ,"Instruction Dependcies"  # Out of order excution sequence
+#print flag1 #for out of order instructions list
+flagult=[]
+l1=[]
+l1=list(flag)
+l3=[]
+for i in range(0,len(l1)):
+        try:
+                flagult.append(0)
+        except:
+                pass
+l5=copy.deepcopy(flag)
+def process(l1,flagult):
+        k=[]
+        for i in range(len(l1)):
+                if l1[i]==[] and flagult[i]==0:
+                        k.append(i)
+
+        return k
+for fun in l1:
+                s1=process(l1,flagult)
+      #          print s1,"Each Iteration OOO"
+                l3.append(s1)
+         #       print flagult,"Flagg"
+                for s in s1:
+                        position=s
+                        flagult[position]=1
+                        l1[position].append(-1)
+        #                print l1
+                        for k in l1:
+                                p1=l1.index(k)
+                                for j in range(len(k)):
+                                        try:
+                                                if k[j]==position and flagult[p1]==0:
+                                                        if k.count(position)==1:
+                                                                k.remove(k[j])
+                                                        else:
+                                                                for t in range(k.count(position)):
+                                                                        k.remove(position)
+                                        except:
+                                                pass
+#print flagult
+print l3,"***********  Out of Order Sequence"
+#l3=[]
+#flag=[]
+#time=len(ins)
+#print time,'****'
+
+#####Inorder Time#######
+ins=list(lis3)
+time=[] #Inorder Time list
+time1=5
+time.append(time1)
+#print len(ins)
+k=-1
+for i in range(0,len(ins)):
+	print ins[i]
+	if ins[i][0]=='addi' or ins[i][0]=='add' or ins[i][0]=='mul' or ins[i][0]=='sub' or ins[i][0]=='div':
+		try:
+			ins[i][1]=chardel(ins[i][1])			
+			ins[i][2]=chardel(ins[i][2])
+			ins[i][3]=chardel(ins[i][3])
+			if ins[i+1][0]=='addi' or ins[i+1][0]=='add' or ins[i+1][0]=='mul' or ins[i+1][0]=='sub' or ins[i+1][0]=='div':
+				ins[i+1][1]=chardel(ins[i+1][1])
+				ins[i+1][2]=chardel(ins[i+1][2])
+				ins[i+1][3]=chardel(ins[i+1][3])					
+				if ins[i][1]== ins[i+1][2] or ins[i+1][3]==ins[i][1] or ins[i][1]==ins[i+1][1] or ins[i+1][1]==ins[i][2] or ins[i+1][1]==ins[i][3]:
+					time1+=1
+					time.append(time1)
+				else:
+					time1+=1
+					time.append(time1)
+			elif ins[i+1][0]=='lw':
+				ins[i+1][1]=chardel(ins[i+1][1])
+				ins[i+1][2]=chardel(ins[i+1][2])
+				if ins[i][1]==ins[i+1][2] or ins[i][1]==ins[i+1][1] or ins[i+1][1]==ins[i][3] or ins[i+1][1]==ins[i][2]:
+					time1=time1+1
+					time.append(time1)
+				else:
+					time1+=1
+					time.append(time1)
+			elif ins[i+1][0]=='move' or ins[i+1][0]=='li':
+				ins[i+1][1]=chardel(ins[i+1][1])
+				ins[i+1][2]=chardel(ins[i+1][2])
+				if ins[i][1]==ins[i+1][2] or ins[i][1]==ins[i+1][1] or ins[i+1][1]==ins[i][3] or ins[i+1][1]==ins[i][2]:
+					time1=time1+1
+					time.append(time1)
+				else:
+					time1+=1
+					time.append(time1)
+	        	elif ins[i+1][0]=='sw':
+				ins[i+1][1]=chardel(ins[i+1][1])
+				ins[i+1][2]=chardel(ins[i+1][2])				
+				if ins[i][1]==ins[i+1][1] or ins [i][1]==ins[i+1][2] or ins[i+1][2]==ins[i][2] or ins[i+1][2]==ins[i][3]:
+					time1=time1+1
+					time.append(time1)
+				else:
+					time1+=1
+					time.append(time1)
+			else:
+					time1=time1+1
+					time.append(time1)
+		except:
+			pass
+	if ins[i][0]=='lw':
+		try:
+			ins[i][1]=chardel(ins[i][1])			
+			ins[i][2]=chardel(ins[i][2])
+			if ins[i+1][0]=='addi' or ins[i+1][0]=='add' or ins[i+1][0]=='mul' or ins[i+1][0]=='sub' or ins[i+1][0]=='div':
+				ins[i+1][1]=chardel(ins[i+1][1])
+				ins[i+1][2]=chardel(ins[i+1][2])
+				ins[i+1][3]=chardel(ins[i+1][3])
+				if ins[i][1]==ins[i+1][1] or ins[i][1]==ins[i+1][2] or ins[i][1]==ins[i+1][3] or ins[i][2]==ins[i+1][1]:
+					time1=time1+2
+					time.append(time1)
+				
+				else:
+					time1=time1+1
+					time.append(time1)
+			elif ins[i+1][0]=='lw':
+				ins[i+1][1]=chardel(ins[i+1][1])
+				ins[i+1][2]=chardel(ins[i+1][2])
+				if ins[i][1]==ins[i+1][1] or ins[i][1]==ins[i+1][2] or ins[i][2]==ins[i+1][1]:
+					time1+=2
+					time.append(time1)
+				else:
+					time1=time1+1
+					time.append(time1)
+			elif ins[i+1][0]=='move' or ins[i+1][0]=='li':
+				ins[i+1][1]=chardel(ins[i+1][1])
+				ins[i+1][2]=chardel(ins[i+1][2])
+				if ins[i][1]==ins[i+1][1] or ins[i][1]==ins[i+1][2] or ins[i][2]==ins[i+1][1]:
+					time1+=2
+					time.append(time1)
+				else:
+					time1=time1+1
+					time.append(time1)
+			elif ins[i+1][0]=='sw' :
+				ins[i+1][1]=chardel(ins[i+1][1])
+				ins[i+1][2]=chardel(ins[i+1][2])
+				if ins[i][1]==ins[i+1][1] or ins[i][1]==ins[i+1][2] or ins[i][2]==ins[i+1][2]:
+					time1+=2
+					time.append(time1)
+					
+				else:
+					time1=time1+1
+					time.append(time1)
+			else:
+				time1+=1
+				time.append(time1)
+		except:
+			pass
+	if ins[i][0]=='move' or ins[i][0]=='li':
+		try:
+			ins[i][1]=chardel(ins[i][1])			
+			ins[i][2]=chardel(ins[i][2])
+			if ins[i+1][0]=='addi' or ins[i+1][0]=='add' or ins[i+1][0]=='mul' or ins[i+1][0]=='sub' or ins[i+1][0]=='div':
+				ins[i+1][1]=chardel(ins[i+1][1])
+				ins[i+1][2]=chardel(ins[i+1][2])
+				ins[i+1][3]=chardel(ins[i+1][3])
+				if ins[i][1]==ins[i+1][1] or ins[i][1]==ins[i+1][2] or ins[i][1]==ins[i+1][3] or ins[i][2]==ins[i+1][1]:
+					time1=time1+1
+					time.append(time1)
+				
+				else:
+					time1=time1+1
+					time.append(time1)
+			elif ins[i+1][0]=='lw':
+				ins[i+1][1]=chardel(ins[i+1][1])
+				ins[i+1][2]=chardel(ins[i+1][2])
+				if ins[i][1]==ins[i+1][1] or ins[i][1]==ins[i+1][2] or ins[i][2]==ins[i+1][1]:
+					time1+=1
+					time.append(time1)
+				else:
+					time1=time1+1
+					time.append(time1)
+			elif ins[i+1][0]=='move' or ins[i+1][0]=='li':
+				ins[i+1][1]=chardel(ins[i+1][1])
+				ins[i+1][2]=chardel(ins[i+1][2])				
+				if ins[i][1]==ins[i+1][1] or ins[i][1]==ins[i+1][2] or ins[i][2]==ins[i+1][1]:
+					time1+=1
+					time.append(time1)
+					
+				else:
+					time1=time1+1
+					time.append(time1)
+			elif ins[i+1][0]=='sw' :
+				ins[i+1][1]=chardel(ins[i+1][1])
+				ins[i+1][2]=chardel(ins[i+1][2])
+				if ins[i][1]==ins[i+1][1] or ins[i][1]==ins[i+1][2] or ins[i][2]==ins[i+1][2]:
+					time1+=1
+					time.append(time1)
+					
+				else:
+					time1=time1+1
+					time.append(time1)
+			else:
+				time1+=1
+				time.append(time1)
+		except:
+			pass
+	if ins[i][0]=='sw':
+		try:
+			ins[i][1]=chardel(ins[i][1])			
+			ins[i][2]=chardel(ins[i][2])
+			if ins[i+1][0]=='addi' or ins[i+1][0]=='add' or ins[i+1][0]=='mul' or ins[i+1][0]=='sub' or ins[i+1][0]=='div':
+				ins[i+1][1]=chardel(ins[i+1][1])
+				ins[i+1][2]=chardel(ins[i+1][2])
+				ins[i+1][3]=chardel(ins[i+1][3])
+				if ins[i][2]==ins[i+1][1] or ins[i][2]==ins[i+1][2] or ins[i][2]==ins[i+1][3] or ins[i][1]==ins[i+1][1] :
+					time1+=2
+					time.append(time1)
+				else:
+					time1=time1+1
+					time.append(time1)
+			elif ins[i+1][0]=='sw':
+				ins[i+1][1]=chardel(ins[i+1][1])
+				ins[i+1][2]=chardel(ins[i+1][2])
+				if ins[i][1]==ins[i+1][2] or ins[i][2]==ins[i+1][1] or ins[i][2]==ins[i+1][2]:
+					time1+=2
+					time.append(time1)
+				else:
+					time1=time1+1
+					time.append(time1)
+			elif ins[i+1][0]=='lw' or ins[i+1][0]=='move' or ins[i+1][0]=='li':
+				ins[i+1][1]=chardel(ins[i+1][1])
+				ins[i+1][2]=chardel(ins[i+1][2])
+				if ins[i][1]==ins[i+1][1] or ins[i+1][1]==ins[i][2] or ins[i][2]==ins[i+1][2]:
+					time1=time1+2
+					time.append(time1)
+				else:
+					time1=time1+1
+					time.append(time1)
+			else:
+				time1=time1+1
+				time.append(time1)
+		except:
+			pass
+
+print ins
+print time
+
+#######Out of order time#########
+#ins=list(lis3)
+k=0
+#par=0
+#ti=0
+def func(l5,j,time):
+	lu=[]
+	maxi=0
+#	par=0
+#	ti=0
+	global par
+	global ti
+	for k in range(len(l5)):
+		if j==k:
+			for m in l5[k]:
+				lu.append(m)
+			print lu,"List"
+	for n in lu:
+		if ins[n][0]=='lw' or ins[n][0]=='sw':
+			if maxi<time[n]:
+				par=n
+				maxi=time[n]
+				ti=2
+		else:
+			if maxi<time[n]:
+				par=n
+				maxi=time[n]
+				ti=1
+	time11=time[par]+ti
+	return time11	 	
+
+t1=[] 							#OOO Time list
+for i in range(len(ins)):
+	t1.append(0)
+for i in range(len(l3)):
+							#print i,"Iter"
+	for j in l3[i]:
+		if i==0:
+							#print j,l3[i]
+			t1[j]=5
+		else:
+			t=func(l5,j,t1)
+			t1[j]=t
+print t1
+
+CPIinorder=float(max(time)-min(time)+1)/len(ins)
+CPIOorder=float(max(t1)-min(t1)+1)/len(ins)
+print CPIinorder,"IN"
+print CPIOorder,"OUT"
+print s
+
+#####----------GUI----------######
+
+from Tkinter import *
+import random
+import sys
+root=[]
+root=random.sample(xrange(1000),100)
+root[0]=Tk()
+root[0].title('Assembler')
+root[0].geometry('300x300')
+top=Frame(root[0])
+top.pack()
+
+lb=Label(top,text="Currently Running File:"+' '+sys.argv[1])
+lb.pack()
+
+#RAW Dep
+def PrintRAW():
+	root[1]=Tk()
+	top1=Frame(root[1])
+	top1.pack()
+	text=Text(top1)
+	text.insert(INSERT,"RAW dependencies\n")
+	if dict1["RAW"]==[]:
+		text.insert(END,"NONE")
+		text.pack()
+	else:
+		for i in dict1["RAW"]:
+			text.insert(INSERT,' '.join(i)+'\n')
+		text.insert(END,"End of RAW dependencies")
+		text.pack()
+but1=Button(top,text="RAW Dependencies",command=PrintRAW)
+but1.pack()
+
+#WAR Dep
+def PrintWAR():
+	root[2]=Tk()
+	top2=Frame(root[2])
+	top2.pack()
+	text=Text(top2)
+	text.insert(INSERT,"WAR dependencies\n")
+	if dict1["WAR"]==[]:
+		text.insert(END,"NONE")
+		text.pack()
+	else:
+		for i in dict1["WAR"]:
+			text.insert(INSERT,' '.join(i)+'\n')
+		text.insert(END,"End of WAR dependencies")
+		text.pack()
+but2=Button(top,text="WAR Dependencies",command=PrintWAR)
+but2.pack()
+
+#WAW Dep
+def PrintWAW():
+	root[3]=Tk()
+	top3=Frame(root[3])
+	top3.pack()
+	text=Text(top3)
+	text.insert(INSERT,"WAW dependencies\n")
+	if dict1["WAW"]==[]:
+		text.insert(END,"NONE")
+		text.pack()
+	else:
+		for i in dict1["WAW"]:
+			text.insert(INSERT,' '.join(i)+'\n')
+		text.insert(END,"End of WAW dependencies")
+		text.pack()
+but3=Button(top,text="WAW Dependencies",command=PrintWAW)
+but3.pack()
+
+#Inorder seq
+def PrintIn():
+	root[4]=Tk()
+	top4=Frame(root[4])
+	top4.pack()
+	text=Text(top4)
+	text.insert(INSERT,"Instruction"+'          '+"Time Taken"+'\n')
+	text.insert(INSERT,'--------------------------------------------------------------------'+'\n')	
+	for i in range(len(lis3)):
+		if len(lis3[i])<=3:
+			text.insert(INSERT,lis3[i][0]+' '+lis3[i][1]+','+lis3[i][2]+'                   '+str(time[i])+'\n')
+			text.insert(INSERT,'--------------------------------------------------------------------'+'\n')
+		else:
+			text.insert(INSERT,lis3[i][0]+' '+lis3[i][1]+','+lis3[i][2]+','+lis3[i][3]+'        '+str(time[i])+'\n')
+			text.insert(INSERT,'--------------------------------------------------------------------'+'\n')
+	text.insert(END,'\n')
+	text.pack()
+but4=Button(top,text="Inorder",command=PrintIn)
+but4.pack()
+
+def CPin():
+	root[6]=Tk()
+	top6=Frame(root[6])
+	top6.pack()
+	text=Text(top6)
+	text.insert(INSERT,"CPI of this InOrder Sequence is:\n")
+	text.insert(END,CPIinorder)
+	text.pack()
+but6=Button(top,text="CPI of Inorder",command=CPin)
+but6.pack()
+
+def CPOut():
+	root[7]=Tk()
+	top7=Frame(root[7])
+	top7.pack()
+	text=Text(top7)
+	text.insert(INSERT,"CPI of this Out of Order Sequence is:\n")
+	text.insert(END,CPIOorder)
+	text.pack()
+but7=Button(top,text="CPI of OOO",command=CPOut)
+but7.pack()
+
+
+s=list(l3)
+di={}
+for i in s:
+	for j in i:
+		di[j]=lis3[j]
+
+print di
+	
+
+
+#Outorder seq
+def PrintOOO():
+	root[5]=Tk()
+	top5=Frame(root[5])
+	top5.pack()
+	text=Text(top5)
+	text.insert(INSERT,"Instruction"+'          '+"Time Taken"+'\n')
+	text.insert(INSERT,'--------------------------------------------------------------------'+'\n')	
+	for i in di.keys():
+		if len(di[i])<=3:
+			text.insert(INSERT,di[i][0]+' '+di[i][1]+','+di[i][2]+'               '+str(t1[i])+'\n' )
+			text.insert(INSERT,'--------------------------------------------------------------------'+'\n')
+		else:
+			text.insert(INSERT,di[i][0]+' '+di[i][1]+','+di[i][2]+','+di[i][3]+'         '+str(t1[i])+'\n')
+			text.insert(INSERT,'--------------------------------------------------------------------'+'\n')
+	text.insert(END,'\n')
+	text.pack()
+but5=Button(top,text="Out Of Order",command=PrintOOO)
+but5.pack()
+
+for i in range(0,8):
+	root[i].mainloop()
